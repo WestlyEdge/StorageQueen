@@ -1,2 +1,2 @@
 # StorageQueen
-Storage Queen Storage Facility Management Software
+Storage Facility Management Software
