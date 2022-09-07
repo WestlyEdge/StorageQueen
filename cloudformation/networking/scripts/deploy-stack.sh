@@ -1,0 +1,22 @@
+#!/bin/bash
+
+REGION="us-east-1";
+ENV="Dev";
+STACK_NAME="Storage-Queen-$ENV-Networking";
+SCRIPT_DIR=$(dirname "$0");
+TEMPLATE_FILE=$SCRIPT_DIR/../template.yaml;
+
+aws cloudformation deploy \
+--region $REGION \
+--stack-name $STACK_NAME \
+--template-file $TEMPLATE_FILE \
+--tags Env=$ENV \
+--parameter-overrides \
+VPCCidrBlock=10.0.0.0/16 \
+PrivateSubnet1CidrBlock=10.0.1.0/24 \
+PrivateSubnet2CidrBlock=10.0.2.0/24 \
+PublicSubnet1CidrBlock=10.0.3.0/24 \
+PublicSubnet2CidrBlock=10.0.4.0/24 \
+Subnet1AZ=us-east-1a \
+Subnet2AZ=us-east-1b \
+Env=$ENV;
