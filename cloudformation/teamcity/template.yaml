@@ -2,17 +2,9 @@ AWSTemplateFormatVersion: 2010-09-09
 
 Description:
 
-  This template provisions TeamCity.
+  This template hosts TeamCity on an ec2 instance in the default vpc.
 
 Parameters:
-
-  VpcId:
-    Type: String
-    Description: install TeamCity in this VPC
-
-  SubnetIds:
-    Type: List<String>
-    Description: install TeamCity on these subnets
 
   InstanceType:
     Type: String
@@ -28,51 +20,32 @@ Parameters:
     Type: String
     Description: Use this keypair to ssh into the ec2
 
-  AutoScalingGroupMinSize:
-    Type: String
-    Description: Minimum EC2 count
-
-  AutoScalingGroupMaxSize:
-    Type: String
-    Description: Maximum EC2 count
-
-  ALBListenerPort:
-    Type: Number
-    Description: public web requests come in on this port
-
-  ALBListenerProtocol:
-    Type: String
-    Description: public web requests come in on this protocol
-
   EC2HostPort:
     Type: Number
     Description: tcp port for ec2 incoming requests
-
-  EC2HostProtocol:
-    Type: String
-    Description: protocol for ec2 incoming requests
 
   TeamCityVersion:
     Type: String
     Description: team city version container image tag
 
-  LaunchConfigurationName:
-    Type: String
-    Default: "sq-teamcity-launch-configuration"
-    Description: Uniqe name for the launch configuration
-
   RoleName:
     Type: String
-    Default: "sq-teamcity-role"
+    Default: "sq-teamcity-ec2-role"
     Description: Uniqe name for the iam role
+
+  SecurityGroupName:
+    Type: String
+    Default: "sq-teamcity-ec2-security-group"
+    Description: Uniqe name for the ec2 security group
 
 Resources:
 
   # EC2 Instance Configuration
   # Note : The cfn-init helper script processes these configuration sections in the following order: packages, groups, users, sources, files, commands, and then services. If you require a different order, separate your sections into different config keys, and then use a configset that specifies the order in which the config keys should be processed.
 
-  myLaunchConfiguration:
-    Type: AWS::AutoScaling::LaunchConfiguration
+  myEC2Instance:
+    Type: AWS::EC2::Instance
+    DependsOn: myEC2SecurityGroup
     Metadata:
       AWS::CloudFormation::Init:
 
@@ -134,7 +107,7 @@ Resources:
                     image: jetbrains/teamcity-server:${TeamCityVersion}
                     user: root
                     ports:
-                      - "8112:8111"
+                      - "80:8111"
                     volumes:
                       - ./data_dir:/data/teamcity_server/datadir
                       - ./teamcity-server-logs:/opt/teamcity/logs
@@ -168,13 +141,12 @@ Resources:
               cwd: "/working-directory"
 
     Properties:
-      LaunchConfigurationName: !Ref LaunchConfigurationName
       InstanceType: !Ref InstanceType
       ImageId: !Ref ImageId
       KeyName: !Ref KeyPairName
       IamInstanceProfile: !Ref myInstanceProfile
       SecurityGroups:
-        - !Ref myEC2SecurityGroup
+        - !Ref SecurityGroupName
       BlockDeviceMappings:
         - DeviceName: "/dev/xvda"
           Ebs:
@@ -190,26 +162,11 @@ Resources:
           /opt/aws/bin/cfn-init -v \
             --region ${AWS::Region} \
             --stack ${AWS::StackName} \
-            --resource myLaunchConfiguration \
+            --resource myEC2Instance \
             --configsets configs;
-
-  myAutoScalingGroup:
-    Type: AWS::AutoScaling::AutoScalingGroup
-    DependsOn: myLaunchConfiguration
-    Properties:
-      MinSize: !Ref AutoScalingGroupMinSize
-      MaxSize: !Ref AutoScalingGroupMaxSize
-      LaunchConfigurationName: !Ref LaunchConfigurationName
-      TargetGroupARNs:
-        - !Ref myTargetGroup
-      AvailabilityZones:
-        Fn::GetAZs: !Ref AWS::Region
       Tags:
         - Key: Name
-          PropagateAtLaunch: true
-          Value: "sq-teamcity-asg-ec2"
-
-  # IAM Configuration
+          Value: "sq-teamcity-ec2"
 
   myInstanceProfile:
     Type: "AWS::IAM::InstanceProfile"
@@ -222,8 +179,6 @@ Resources:
     Type: "AWS::IAM::Role"
     Properties:
       RoleName: !Ref RoleName
-      ManagedPolicyArns:
-        - "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role"
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -239,6 +194,7 @@ Resources:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: !Sub "SG for TeamCity EC2 instances"
+      GroupName: !Ref SecurityGroupName
       SecurityGroupIngress:
         - Description: "allow incoming ssh connections"
           IpProtocol: "tcp"
@@ -249,63 +205,25 @@ Resources:
           IpProtocol: "tcp"
           FromPort: !Ref EC2HostPort
           ToPort: !Ref EC2HostPort
-          SourceSecurityGroupId: !Ref myALBSecurityGroup
-      Tags:
-        - Key: Name
-          Value: !Sub "sq-teamcity-ec2-security-group"
-
-  # ALB Configuration
-
-  myALB:
-    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
-    Properties:
-      Type: "application"
-      Subnets: !Ref SubnetIds
-      Scheme: internet-facing
-      SecurityGroups:
-        - !Ref myALBSecurityGroup
-      Tags:
-        - Key: Name
-          Value: "sq-teamcity-alb"
-
-  myALBSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupDescription: Open port 80
-      VpcId: !Ref VpcId
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: '80'
-          ToPort: '80'
           CidrIp: 0.0.0.0/0
-
-  myALBListener:
-    Type: AWS::ElasticLoadBalancingV2::Listener
-    DependsOn:
-      - myALB
-      - myTargetGroup
-    Properties:
-      Port: !Ref ALBListenerPort
-      Protocol: !Ref ALBListenerProtocol
-      LoadBalancerArn: !Ref myALB
-      DefaultActions:
-        - Type: "forward"
-          TargetGroupArn: !Ref myTargetGroup
-
-  myTargetGroup:
-    Type: AWS::ElasticLoadBalancingV2::TargetGroup
-    Properties:
-      Port: !Ref EC2HostPort
-      Protocol: !Ref EC2HostProtocol
-      VpcId: !Ref VpcId
-      HealthCheckPath: "/favicon.ico"
+      Tags:
+        - Key: Name
+          Value: !Ref SecurityGroupName
 
 Outputs:
 
-    LoadBalancerDNS:
+    PublicDNS:
       Description:
-        The Load Balancer DNS Path
+        The EC2 Instance DNS Path
       Value:
         !GetAtt
-        - myALB
-        - DNSName
+        - myEC2Instance
+        - PublicDnsName
+
+    PublicIp:
+      Description:
+        The EC2 Instance Public IP Address
+      Value:
+        !GetAtt
+        - myEC2Instance
+        - PublicIp
