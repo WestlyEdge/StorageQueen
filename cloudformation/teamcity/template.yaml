@@ -106,6 +106,7 @@ Resources:
                   teamcity:
                     image: jetbrains/teamcity-server:${TeamCityVersion}
                     user: root
+                    restart: always
                     ports:
                       - "80:8111"
                     volumes:
@@ -117,6 +118,7 @@ Resources:
                   teamcity-agent-1:
                     image: jetbrains/teamcity-agent:${TeamCityVersion}-linux-sudo
                     user: root
+                    restart: always
                     privileged: true
                     volumes:
                       - ./agents/agent-1/conf:/data/teamcity_agent/conf
@@ -127,6 +129,7 @@ Resources:
                   teamcity-agent-2:
                     image: jetbrains/teamcity-agent:${TeamCityVersion}-linux-sudo
                     user: root
+                    restart: always
                     privileged: true
                     volumes:
                       - ./agents/agent-2/conf:/data/teamcity_agent/conf
