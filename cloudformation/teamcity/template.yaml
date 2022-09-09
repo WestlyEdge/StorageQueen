@@ -1,0 +1,311 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Description:
+
+  This template provisions TeamCity.
+
+Parameters:
+
+  VpcId:
+    Type: String
+    Description: install TeamCity in this VPC
+
+  SubnetIds:
+    Type: List<String>
+    Description: install TeamCity on these subnets
+
+  InstanceType:
+    Type: String
+    AllowedValues:
+      - "t2.medium"
+    Description: EC2 Instance Type... t2.micro, m1.small, m1.large, etc...
+
+  ImageId:
+    Type: String
+    Description: EC2 where TeamCity server and agent will run is created from this base image
+
+  KeyPairName:
+    Type: String
+    Description: Use this keypair to ssh into the ec2
+
+  AutoScalingGroupMinSize:
+    Type: String
+    Description: Minimum EC2 count
+
+  AutoScalingGroupMaxSize:
+    Type: String
+    Description: Maximum EC2 count
+
+  ALBListenerPort:
+    Type: Number
+    Description: public web requests come in on this port
+
+  ALBListenerProtocol:
+    Type: String
+    Description: public web requests come in on this protocol
+
+  EC2HostPort:
+    Type: Number
+    Description: tcp port for ec2 incoming requests
+
+  EC2HostProtocol:
+    Type: String
+    Description: protocol for ec2 incoming requests
+
+  TeamCityVersion:
+    Type: String
+    Description: team city version container image tag
+
+  LaunchConfigurationName:
+    Type: String
+    Default: "sq-teamcity-launch-configuration"
+    Description: Uniqe name for the launch configuration
+
+  RoleName:
+    Type: String
+    Default: "sq-teamcity-role"
+    Description: Uniqe name for the iam role
+
+Resources:
+
+  # EC2 Instance Configuration
+  # Note : The cfn-init helper script processes these configuration sections in the following order: packages, groups, users, sources, files, commands, and then services. If you require a different order, separate your sections into different config keys, and then use a configset that specifies the order in which the config keys should be processed.
+
+  myLaunchConfiguration:
+    Type: AWS::AutoScaling::LaunchConfiguration
+    Metadata:
+      AWS::CloudFormation::Init:
+
+        configSets:
+          configs:
+            - docker-install
+            - docker-service-start
+            - docker-compose-install
+            - docker-compose-file
+            - teamcity-install
+
+        docker-install:
+          packages:
+            yum:
+              docker: [ ]
+
+        docker-service-start:
+          services:
+            systemd:
+              docker:
+                enabled: "true"
+                ensureRunning: "true"
+
+        docker-compose-install:
+          commands:
+            command-1:
+              command: "curl -L https://github.com/docker/compose/releases/download/1.22.0/docker-compose-$(uname -s)-$(uname -m) -o /usr/bin/docker-compose;"
+            command-2:
+              command: "chmod 755 /usr/bin/docker-compose;"
+
+        docker-compose-file:
+          files:
+            /working-directory/docker-compose.yml:
+              content: !Sub |
+                version: '3.1'
+
+                # ./buildserver_pgdata - Posgres DB data
+                # ./data_dir - TeamCity data directory
+                # ./teamcity-server-logs - logs of primary TeamCity server
+                # ./agents/agent-1/conf - configuration directory for the first build agent
+                # ./agents/agent-1/conf - configuration directory for the second build agent
+
+                services:
+                  db:
+                    image: postgres:latest
+                    user: root
+                    restart: always
+                    environment:
+                      - POSTGRES_PASSWORD=teamcity_password
+                      - POSTGRES_USER=teamcity_user
+                      - POSTGRES_DB=teamcity_db
+                      - PG_DATA=/var/lib/postgresql/data
+                    volumes:
+                      - ./buildserver_pgdata:/var/lib/postgresql/data
+                    ports:
+                      - 5433:5432
+
+                  teamcity:
+                    image: jetbrains/teamcity-server:${TeamCityVersion}
+                    user: root
+                    ports:
+                      - "8112:8111"
+                    volumes:
+                      - ./data_dir:/data/teamcity_server/datadir
+                      - ./teamcity-server-logs:/opt/teamcity/logs
+                    depends_on:
+                      - db
+
+                  teamcity-agent-1:
+                    image: jetbrains/teamcity-agent:${TeamCityVersion}-linux-sudo
+                    user: root
+                    privileged: true
+                    volumes:
+                      - ./agents/agent-1/conf:/data/teamcity_agent/conf
+                    environment:
+                      - DOCKER_IN_DOCKER=start
+                      - SERVER_URL=http://teamcity:8111
+
+                  teamcity-agent-2:
+                    image: jetbrains/teamcity-agent:${TeamCityVersion}-linux-sudo
+                    user: root
+                    privileged: true
+                    volumes:
+                      - ./agents/agent-2/conf:/data/teamcity_agent/conf
+                    environment:
+                      - DOCKER_IN_DOCKER=start
+                      - SERVER_URL=http://teamcity:8111
+
+        teamcity-install:
+          commands:
+            command-1:
+              command: "docker-compose up -d;"
+              cwd: "/working-directory"
+
+    Properties:
+      LaunchConfigurationName: !Ref LaunchConfigurationName
+      InstanceType: !Ref InstanceType
+      ImageId: !Ref ImageId
+      KeyName: !Ref KeyPairName
+      IamInstanceProfile: !Ref myInstanceProfile
+      SecurityGroups:
+        - !Ref myEC2SecurityGroup
+      BlockDeviceMappings:
+        - DeviceName: "/dev/xvda"
+          Ebs:
+            VolumeType: "gp2"
+            VolumeSize: 20
+            DeleteOnTermination: true
+            Encrypted: false
+      UserData:
+        'Fn::Base64':
+          !Sub |
+          #!bin/bash -xe
+
+          /opt/aws/bin/cfn-init -v \
+            --region ${AWS::Region} \
+            --stack ${AWS::StackName} \
+            --resource myLaunchConfiguration \
+            --configsets configs;
+
+  myAutoScalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    DependsOn: myLaunchConfiguration
+    Properties:
+      MinSize: !Ref AutoScalingGroupMinSize
+      MaxSize: !Ref AutoScalingGroupMaxSize
+      LaunchConfigurationName: !Ref LaunchConfigurationName
+      TargetGroupARNs:
+        - !Ref myTargetGroup
+      AvailabilityZones:
+        Fn::GetAZs: !Ref AWS::Region
+      Tags:
+        - Key: Name
+          PropagateAtLaunch: true
+          Value: "sq-teamcity-asg-ec2"
+
+  # IAM Configuration
+
+  myInstanceProfile:
+    Type: "AWS::IAM::InstanceProfile"
+    DependsOn: myRole
+    Properties:
+      Roles:
+        - !Ref RoleName
+
+  myRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      RoleName: !Ref RoleName
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service:
+                - "ec2.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      Path: "/"
+
+  myEC2SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: !Sub "SG for TeamCity EC2 instances"
+      SecurityGroupIngress:
+        - Description: "allow incoming ssh connections"
+          IpProtocol: "tcp"
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 24.240.92.10/24 # allow ssh connections from home
+        - Description: "allow incoming http connections"
+          IpProtocol: "tcp"
+          FromPort: !Ref EC2HostPort
+          ToPort: !Ref EC2HostPort
+          SourceSecurityGroupId: !Ref myALBSecurityGroup
+      Tags:
+        - Key: Name
+          Value: !Sub "sq-teamcity-ec2-security-group"
+
+  # ALB Configuration
+
+  myALB:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Type: "application"
+      Subnets: !Ref SubnetIds
+      Scheme: internet-facing
+      SecurityGroups:
+        - !Ref myALBSecurityGroup
+      Tags:
+        - Key: Name
+          Value: "sq-teamcity-alb"
+
+  myALBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Open port 80
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: '80'
+          ToPort: '80'
+          CidrIp: 0.0.0.0/0
+
+  myALBListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    DependsOn:
+      - myALB
+      - myTargetGroup
+    Properties:
+      Port: !Ref ALBListenerPort
+      Protocol: !Ref ALBListenerProtocol
+      LoadBalancerArn: !Ref myALB
+      DefaultActions:
+        - Type: "forward"
+          TargetGroupArn: !Ref myTargetGroup
+
+  myTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Port: !Ref EC2HostPort
+      Protocol: !Ref EC2HostProtocol
+      VpcId: !Ref VpcId
+      HealthCheckPath: "/favicon.ico"
+
+Outputs:
+
+    LoadBalancerDNS:
+      Description:
+        The Load Balancer DNS Path
+      Value:
+        !GetAtt
+        - myALB
+        - DNSName
