@@ -15,6 +15,8 @@ InstanceType="t2.medium" \
 ImageId="ami-05fa00d4c63e32376" \
 KeyPairName="storage-queen-keypair" \
 EC2HostPort=80 \
-TeamCityVersion="2022.04.3";
+TeamCityVersion="2022.04.3" \
+SecretsManagerName="sq.teamcity" \
+PostgresPasswordKey="POSTGRES_USER_PASSWORD";
 
 

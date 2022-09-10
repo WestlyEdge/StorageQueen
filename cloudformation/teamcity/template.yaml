@@ -18,7 +18,7 @@ Parameters:
 
   KeyPairName:
     Type: String
-    Description: Use this keypair to ssh into the ec2
+    Description: use this keypair to ssh into the ec2
 
   EC2HostPort:
     Type: Number
@@ -28,15 +28,23 @@ Parameters:
     Type: String
     Description: team city version container image tag
 
+  SecretsManagerName:
+    Type: String
+    Description: the name of the teamcity secrets json object in aws secrets manager
+
+  PostgresPasswordKey:
+    Type: String
+    Description: the name of the postgres password key in aws secrets manager
+
   RoleName:
     Type: String
     Default: "sq-teamcity-ec2-role"
-    Description: Uniqe name for the iam role
+    Description: uniqe name for the iam role
 
   SecurityGroupName:
     Type: String
     Default: "sq-teamcity-ec2-security-group"
-    Description: Uniqe name for the ec2 security group
+    Description: uniqe name for the ec2 security group
 
 Resources:
 
@@ -51,16 +59,22 @@ Resources:
 
         configSets:
           configs:
-            - docker-install
+            - yum-update
+            - package-installs
             - docker-service-start
-            - docker-compose-install
-            - docker-compose-file
-            - teamcity-install
+            - bootstrap-stuff
+            - docker-compose
 
-        docker-install:
+        yum-update:
+          commands:
+            command-1:
+              command: "yum update -y;"
+
+        package-installs:
           packages:
             yum:
               docker: [ ]
+              jq: [ ]
 
         docker-service-start:
           services:
@@ -69,16 +83,10 @@ Resources:
                 enabled: "true"
                 ensureRunning: "true"
 
-        docker-compose-install:
-          commands:
-            command-1:
-              command: "curl -L https://github.com/docker/compose/releases/download/1.22.0/docker-compose-$(uname -s)-$(uname -m) -o /usr/bin/docker-compose;"
-            command-2:
-              command: "chmod 755 /usr/bin/docker-compose;"
-
-        docker-compose-file:
+        bootstrap-stuff:
           files:
             /working-directory/docker-compose.yml:
+              mode: "000655"
               content: !Sub |
                 version: '3.1'
 
@@ -86,7 +94,7 @@ Resources:
                 # ./data_dir - TeamCity data directory
                 # ./teamcity-server-logs - logs of primary TeamCity server
                 # ./agents/agent-1/conf - configuration directory for the first build agent
-                # ./agents/agent-1/conf - configuration directory for the second build agent
+                # ./agents/agent-2/conf - configuration directory for the second build agent
 
                 services:
                   db:
@@ -94,8 +102,8 @@ Resources:
                     user: root
                     restart: always
                     environment:
-                      - POSTGRES_PASSWORD=teamcity_password
                       - POSTGRES_USER=teamcity_user
+                      - POSTGRES_PASSWORD={{${PostgresPasswordKey}}}
                       - POSTGRES_DB=teamcity_db
                       - PG_DATA=/var/lib/postgresql/data
                     volumes:
@@ -137,7 +145,31 @@ Resources:
                       - DOCKER_IN_DOCKER=start
                       - SERVER_URL=http://teamcity:8111
 
-        teamcity-install:
+            /working-directory/bootstrap.sh:
+              mode: "000755"
+              content: !Sub |
+                #!/bin/bash
+
+                # install docker-compose
+                curl -L https://github.com/docker/compose/releases/download/1.22.0/docker-compose-$(uname -s)-$(uname -m) -o /usr/bin/docker-compose;
+                chmod 755 /usr/bin/docker-compose;
+
+                # install mustache
+                curl -L https://git.io/get-mo -o /usr/bin/mo;
+                chmod 755 /usr/bin/mo;
+
+                # get the postgres password and save it to an env var for mustache
+                export ${PostgresPasswordKey}=$(aws secretsmanager get-secret-value --region ${AWS::Region} --secret-id ${SecretsManagerName} | jq --raw-output '.SecretString' | jq -r .${PostgresPasswordKey});
+
+                # mustache render the new docker-compose.yml
+                cat ./docker-compose.yml | mo | tee ./docker-compose.yml;
+
+          commands:
+            command-1:
+              command: "./bootstrap.sh"
+              cwd: "/working-directory"
+
+        docker-compose:
           commands:
             command-1:
               command: "docker-compose up -d;"
@@ -182,6 +214,8 @@ Resources:
     Type: "AWS::IAM::Role"
     Properties:
       RoleName: !Ref RoleName
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/SecretsManagerReadWrite"
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -222,6 +256,8 @@ Outputs:
         !GetAtt
         - myEC2Instance
         - PublicDnsName
+      Export:
+        Name:  !Sub "${AWS::StackName}-public-dns"
 
     PublicIp:
       Description:
@@ -230,3 +266,5 @@ Outputs:
         !GetAtt
         - myEC2Instance
         - PublicIp
+      Export:
+        Name:  !Sub "${AWS::StackName}-public-ip"
