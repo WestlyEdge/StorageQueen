@@ -116,7 +116,7 @@ Resources:
                 services:
                   db:
                     container_name: teamcity-db
-                    image: postgres:latest
+                    image: ${PostgresDockerImage}
                     user: root
                     restart: always
                     environment:
@@ -131,7 +131,7 @@ Resources:
 
                   teamcity:
                     container_name: teamcity-server
-                    image: jetbrains/teamcity-server:${TeamCityVersion}
+                    image: ${TeamCityServerDockerImage}
                     user: root
                     restart: always
                     ports:
@@ -144,7 +144,7 @@ Resources:
 
                   teamcity-agent-1:
                     container_name: teamcity-agent-1
-                    image: jetbrains/teamcity-agent:${TeamCityVersion}-linux-sudo
+                    image: ${TeamCityAgentDockerImage}
                     user: root
                     restart: always
                     privileged: true
@@ -156,7 +156,7 @@ Resources:
 
                   teamcity-agent-2:
                     container_name: teamcity-agent-2
-                    image: jetbrains/teamcity-agent:${TeamCityVersion}-linux-sudo
+                    image: ${TeamCityAgentDockerImage}
                     user: root
                     restart: always
                     privileged: true
