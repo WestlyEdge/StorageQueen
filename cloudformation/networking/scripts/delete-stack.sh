@@ -1,7 +1,7 @@
 #!/bin/bash
 
 REGION="us-east-1";
-ENV="Dev";
+ENV="dev";
 STACK_NAME="sq-$ENV-networking";
 
 aws cloudformation delete-stack \
