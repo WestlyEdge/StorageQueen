@@ -302,6 +302,7 @@ Resources:
         - "arn:aws:iam::aws:policy/SecretsManagerReadWrite"
         - "arn:aws:iam::aws:policy/AmazonRoute53FullAccess"
         - "arn:aws:iam::aws:policy/AWSCloudFormationFullAccess"
+        - "arn:aws:iam::aws:policy/AmazonEC2FullAccess"
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
