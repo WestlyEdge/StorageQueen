@@ -78,8 +78,9 @@ Resources:
             - yum-update
             - package-installs
             - docker-service-start
-            - bootstrap-stuff
+            - bootstrap-teamcity-server
             - docker-compose
+            - bootstrap-teamcity-agents
 
         yum-update:
           commands:
@@ -99,7 +100,7 @@ Resources:
                 enabled: "true"
                 ensureRunning: "true"
 
-        bootstrap-stuff:
+        bootstrap-teamcity-server:
           files:
             /working-directory/docker-compose.tmpl:
               mode: "000644"
@@ -114,6 +115,7 @@ Resources:
 
                 services:
                   db:
+                    container_name: teamcity-db
                     image: postgres:latest
                     user: root
                     restart: always
@@ -128,6 +130,7 @@ Resources:
                       - 5433:5432
 
                   teamcity:
+                    container_name: teamcity-server
                     image: jetbrains/teamcity-server:${TeamCityVersion}
                     user: root
                     restart: always
@@ -140,6 +143,7 @@ Resources:
                       - db
 
                   teamcity-agent-1:
+                    container_name: teamcity-agent-1
                     image: jetbrains/teamcity-agent:${TeamCityVersion}-linux-sudo
                     user: root
                     restart: always
@@ -151,6 +155,7 @@ Resources:
                       - SERVER_URL=http://teamcity:8111
 
                   teamcity-agent-2:
+                    container_name: teamcity-agent-2
                     image: jetbrains/teamcity-agent:${TeamCityVersion}-linux-sudo
                     user: root
                     restart: always
@@ -234,6 +239,26 @@ Resources:
               command: "docker-compose up -d;"
               cwd: "/working-directory"
 
+        bootstrap-teamcity-agents:
+          files:
+            /working-directory/bootstrap-agents.sh:
+              mode: "000744"
+              content: !Sub |
+                #!/bin/bash
+
+                # bootstrap teamcity-agent-1
+                docker exec teamcity-agent-1 apt-get update -qq
+                docker exec teamcity-agent-1 apt-get install -qq -y awscli
+
+                # bootstrap teamcity-agent-2
+                docker exec teamcity-agent-2 apt-get update -qq
+                docker exec teamcity-agent-2 apt-get install -qq -y awscli
+
+          commands:
+            command-1:
+              command: "./bootstrap-agents.sh"
+              cwd: "/working-directory"
+
     Properties:
       InstanceType: !Ref InstanceType
       ImageId: !Ref ImageId
@@ -276,6 +301,7 @@ Resources:
       ManagedPolicyArns:
         - "arn:aws:iam::aws:policy/SecretsManagerReadWrite"
         - "arn:aws:iam::aws:policy/AmazonRoute53FullAccess"
+        - "arn:aws:iam::aws:policy/AWSCloudFormationFullAccess"
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
