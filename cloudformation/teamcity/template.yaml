@@ -36,6 +36,22 @@ Parameters:
     Type: String
     Description: the name of the postgres password key in aws secrets manager
 
+  DNSHostedZoneId:
+    Type: String
+    Description: the id of the existing aws public hosted zone in route53 where the dns record already exists
+
+  DNSRecordName:
+    Type: String
+    Description: the name of the dns record that already exists in route53
+
+  DNSRecordTTL:
+    Type: String
+    Description: the ttl of the dns record that already exists in route53
+
+  AllowAccessCidrIp:
+    Type: String
+    Description: the security group for the ec2 will only allow incoming connections from this cidr
+
   RoleName:
     Type: String
     Default: "sq-teamcity-ec2-role"
@@ -85,8 +101,8 @@ Resources:
 
         bootstrap-stuff:
           files:
-            /working-directory/docker-compose.yml:
-              mode: "000655"
+            /working-directory/docker-compose.tmpl:
+              mode: "000644"
               content: !Sub |
                 version: '3.1'
 
@@ -145,8 +161,31 @@ Resources:
                       - DOCKER_IN_DOCKER=start
                       - SERVER_URL=http://teamcity:8111
 
+            /working-directory/update-dns-record.tmpl:
+              mode: "000644"
+              content: !Sub |
+
+                {
+                  "Comment": "updating dns record because the teamcity ec2 has been replaced and is launching now (public ip address has changed)",
+                  "Changes": [
+                    {
+                      "Action": "UPSERT",
+                      "ResourceRecordSet": {
+                        "Name": "${DNSRecordName}",
+                        "Type": "A",
+                        "TTL": ${DNSRecordTTL},
+                        "ResourceRecords": [
+                          {
+                            "Value": "{{PUBLIC_IP}}"
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+
             /working-directory/bootstrap.sh:
-              mode: "000755"
+              mode: "000744"
               content: !Sub |
                 #!/bin/bash
 
@@ -158,11 +197,31 @@ Resources:
                 curl -L https://git.io/get-mo -o /usr/bin/mo;
                 chmod 755 /usr/bin/mo;
 
+                # get the public ip of this ec2 and save it to an env var for mustache
+                export PUBLIC_IP=$(curl http://169.254.169.254/latest/meta-data/public-ipv4);
+
+                # mustache render to update update-dns-record.json (adding public ip of this ec2 to the json file)
+                cat ./update-dns-record.tmpl | mo | tee ./update-dns-record.json;
+
+                # update the existing dns record in route53 because the teamcity ec2 has been replaced (public ip address has changed)
+                aws route53 change-resource-record-sets --hosted-zone-id ${DNSHostedZoneId} --change-batch file://./update-dns-record.json;
+
                 # get the postgres password and save it to an env var for mustache
                 export ${PostgresPasswordKey}=$(aws secretsmanager get-secret-value --region ${AWS::Region} --secret-id ${SecretsManagerName} | jq --raw-output '.SecretString' | jq -r .${PostgresPasswordKey});
 
-                # mustache render the new docker-compose.yml
-                cat ./docker-compose.yml | mo | tee ./docker-compose.yml;
+                # mustache render to update docker-compose.yml (adding postgres password to the yml file)
+                cat ./docker-compose.tmpl | mo | tee ./docker-compose.yml;
+
+            /var/lib/cloud/scripts/per-boot/reboot.sh:
+              mode: "000744"
+              content: !Sub |
+                #!/bin/bash
+
+                # we are adding this file to the per-boot directory to make our bootstrap.sh script run on every ec2 reboot
+                # we do this to keep the route53 dns record updated because the ec2 public ip changes on an ec2 on reboot
+                # the other stuff in the bootstrap script will run too, but no big deal, it's all idempotent
+
+                cd /working-directory && ./bootstrap.sh;
 
           commands:
             command-1:
@@ -216,6 +275,7 @@ Resources:
       RoleName: !Ref RoleName
       ManagedPolicyArns:
         - "arn:aws:iam::aws:policy/SecretsManagerReadWrite"
+        - "arn:aws:iam::aws:policy/AmazonRoute53FullAccess"
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -237,12 +297,12 @@ Resources:
           IpProtocol: "tcp"
           FromPort: 22
           ToPort: 22
-          CidrIp: 24.240.92.10/24 # allow ssh connections from home
+          CidrIp: !Ref AllowAccessCidrIp # allow ssh connections from this cidr
         - Description: "allow incoming http connections"
           IpProtocol: "tcp"
           FromPort: !Ref EC2HostPort
           ToPort: !Ref EC2HostPort
-          CidrIp: 0.0.0.0/0
+          CidrIp: !Ref AllowAccessCidrIp # allow ssh connections from this cidr
       Tags:
         - Key: Name
           Value: !Ref SecurityGroupName

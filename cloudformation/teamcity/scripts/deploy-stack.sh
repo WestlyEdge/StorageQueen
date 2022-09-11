@@ -17,6 +17,8 @@ KeyPairName="storage-queen-keypair" \
 EC2HostPort=80 \
 TeamCityVersion="2022.04.3" \
 SecretsManagerName="sq.teamcity" \
-PostgresPasswordKey="POSTGRES_USER_PASSWORD";
-
-
+PostgresPasswordKey="POSTGRES_USER_PASSWORD" \
+DNSHostedZoneId="Z096596714ARTMU5ISO7G" \
+DNSRecordName="teamcity.storagequeensoftware.com" \
+DNSRecordTTL="300" \
+AllowAccessCidrIp="24.240.92.10/24";
