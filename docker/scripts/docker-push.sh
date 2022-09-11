@@ -1,7 +1,5 @@
 #!/bin/bash
 
-#docker login --username=kellyedge
-
 REPO_NAME=${1} # docker image repo name arg must be passed in as the first input arg
 IMAGE_NAME=${2} # docker image name arg must be passed in as the second input arg
 IMAGE_TAG=${3} # docker image tag arg must be pased in as the third input arg
