@@ -2,7 +2,7 @@
 
 REGION="us-east-1";
 ENV="Dev";
-STACK_NAME="Storage-Queen-$ENV-Networking";
+STACK_NAME="sq-$ENV-networking";
 
 aws cloudformation delete-stack \
 --region $REGION \

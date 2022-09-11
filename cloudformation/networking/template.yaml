@@ -52,14 +52,14 @@ Resources:
 
       Tags:
         - Key: Name
-          Value: !Join [" ", ["Storage Queen" , !Ref Env, "VPC" ]]
+          Value: !Sub "sq-${Env}-vpc"
 
   myInternetGateway:
     Type: AWS::EC2::InternetGateway
     Properties:
       Tags:
         - Key: Name
-          Value: !Join [" ", ["Storage Queen", !Ref Env, "Internet Gateway"]]
+          Value: !Sub "sq-${Env}-internet-gateway"
 
   myVPCGatewayAttachment:
     Type: AWS::EC2::VPCGatewayAttachment
@@ -78,7 +78,7 @@ Resources:
       AvailabilityZone: !Ref Subnet1AZ
       Tags:
         - Key: Name
-          Value: !Join [" ", ["Storage Queen" , !Ref Env, "Public Subnet 1"]]
+          Value: !Sub "sq-${Env}-public-subnet-1"
 
   myNatGateway1:
     Type: AWS::EC2::NatGateway
@@ -91,7 +91,7 @@ Resources:
         Ref: myPublicSubnet1
       Tags:
         - Key: Name
-          Value: !Join [" ", ["Storage Queen" , !Ref Env, "NatGateway1"]]
+          Value: !Sub "sq-${Env}-nat-gateway-1"
 
   myNatEIP1:
     DependsOn: myVPCGatewayAttachment
@@ -116,7 +116,7 @@ Resources:
       AvailabilityZone: !Ref Subnet2AZ
       Tags:
         - Key: Name
-          Value: !Join [" ", ["Storage Queen", !Ref Env, "Public Subnet 2"]]
+          Value: !Sub "sq-${Env}-public-subnet-2"
 
   myNatGateway2:
     Type: AWS::EC2::NatGateway
@@ -129,7 +129,7 @@ Resources:
         Ref: myPublicSubnet2
       Tags:
         - Key: Name
-          Value: !Join [" ", ["Storage Queen", !Ref Env, "NatGateway2"]]
+          Value: !Sub "sq-${Env}-nat-gateway-2"
 
   myNatEIP2:
     DependsOn: myVPCGatewayAttachment
@@ -151,7 +151,7 @@ Resources:
       VpcId: !Ref myVPC
       Tags:
         - Key: Name
-          Value: !Join [" ", ["Storage Queen", !Ref Env, "Public Routes"]]
+          Value: !Sub "sq-${Env}-public-route-table"
 
   myPublicRoute:
     Type: AWS::EC2::Route
@@ -172,7 +172,7 @@ Resources:
       AvailabilityZone: !Ref Subnet1AZ
       Tags:
         - Key: Name
-          Value: !Join [" ", ["Storage Queen" , !Ref Env, "Private Subnet 1"]]
+          Value: !Sub "sq-${Env}-private-subnet-1"
 
   # Private Subnet 1 Routes
 
@@ -182,7 +182,7 @@ Resources:
       VpcId: !Ref myVPC
       Tags:
         - Key: Name
-          Value: !Join [" ", ["Storage Queen", !Ref Env, "Private Route Table 1"]]
+          Value: !Sub "sq-${Env}-private-route-table-1"
 
   myPrivateRoute1:
     Type: AWS::EC2::Route
@@ -209,7 +209,7 @@ Resources:
       AvailabilityZone: !Ref Subnet2AZ
       Tags:
         - Key: Name
-          Value: !Join [" ", ["Storage Queen", !Ref Env, "Private Subnet 2"]]
+          Value: !Sub "sq-${Env}-private-subnet-2"
 
   # Private Subnet 2 Routes
 
@@ -219,7 +219,7 @@ Resources:
       VpcId: !Ref myVPC
       Tags:
         - Key: Name
-          Value: !Join [" ", ["Storage Queen", !Ref Env, "Private RouteTable 2"]]
+          Value: !Sub "sq-${Env}-private-route-table-2"
 
   myPrivateRoute2:
     Type: AWS::EC2::Route
@@ -243,28 +243,28 @@ Outputs:
     Description: Vpc
     Value: !Ref myVPC
     Export:
-      Name: !Sub "Storage-Queen-${Env}-Networking-Vpc-ID"
+      Name: !Sub "${AWS::StackName}-vpc-id"
 
   PublicSubnet1:
     Description: Public Subnet 1
     Value: !Ref myPublicSubnet1
     Export:
-      Name: !Sub "Storage-Queen-${Env}-Networking-PublicSubnet1-ID"
+      Name: !Sub "${AWS::StackName}-public-subnet-1-id"
 
   PublicSubnet2:
     Description: Public Subnet 2
     Value: !Ref myPublicSubnet2
     Export:
-      Name: !Sub "Storage-Queen-${Env}-Networking-PublicSubnet2-ID"
+      Name: !Sub "${AWS::StackName}-public-subnet-2-id"
 
   PrivateSubnet1:
     Description: Private Subnet 1
     Value: !Ref myPrivateSubnet1
     Export:
-      Name: !Sub "Storage-Queen-${Env}-Networking-PrivateSubnet1-ID"
+      Name: !Sub "${AWS::StackName}-private-subnet-1-id"
 
   PrivateSubnet2:
     Description: Private Subnet 2
     Value: !Ref myPrivateSubnet2
     Export:
-      Name: !Sub "Storage-Queen-${Env}-Networking-PrivateSubnet2-ID"
+      Name: !Sub "${AWS::StackName}-private-subnet-2-id"

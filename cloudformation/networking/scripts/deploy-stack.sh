@@ -1,8 +1,8 @@
 #!/bin/bash
 
 REGION="us-east-1";
-ENV="Dev";
-STACK_NAME="Storage-Queen-$ENV-Networking";
+ENV="dev";
+STACK_NAME="sq-$ENV-networking";
 SCRIPT_DIR=$(dirname "$0");
 TEMPLATE_FILE=$SCRIPT_DIR/../template.yaml;
 
