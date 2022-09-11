@@ -24,10 +24,6 @@ Parameters:
     Type: Number
     Description: tcp port for ec2 incoming requests
 
-  TeamCityVersion:
-    Type: String
-    Description: team city version container image tag
-
   SecretsManagerName:
     Type: String
     Description: the name of the teamcity secrets json object in aws secrets manager
@@ -51,6 +47,18 @@ Parameters:
   AllowAccessCidrIp:
     Type: String
     Description: the security group for the ec2 will only allow incoming connections from this cidr
+
+  PostgresDockerImage:
+    Type: String
+    Description: path to pull down the postgres docker image
+
+  TeamCityServerDockerImage:
+    Type: String
+    Description: path to pull down the teamcity server docker image
+
+  TeamCityAgentDockerImage:
+    Type: String
+    Description: path to pull down the teamcity agent docker image
 
   RoleName:
     Type: String
