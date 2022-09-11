@@ -316,7 +316,7 @@ Resources:
   myEC2SecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: !Sub "SG for TeamCity EC2 instances"
+      GroupDescription: "SG for TeamCity EC2 instances"
       GroupName: !Ref SecurityGroupName
       SecurityGroupIngress:
         - Description: "allow incoming ssh connections"
