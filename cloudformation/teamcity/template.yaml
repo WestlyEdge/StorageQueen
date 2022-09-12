@@ -88,7 +88,6 @@ Resources:
             - docker-service-start
             - bootstrap-teamcity-server
             - docker-compose
-            - bootstrap-teamcity-agents
 
         yum-update:
           commands:
@@ -245,26 +244,6 @@ Resources:
           commands:
             command-1:
               command: "docker-compose up -d;"
-              cwd: "/working-directory"
-
-        bootstrap-teamcity-agents:
-          files:
-            /working-directory/bootstrap-agents.sh:
-              mode: "000744"
-              content: !Sub |
-                #!/bin/bash
-
-                # bootstrap teamcity-agent-1
-                docker exec teamcity-agent-1 apt-get update -qq
-                docker exec teamcity-agent-1 apt-get install -qq -y awscli
-
-                # bootstrap teamcity-agent-2
-                docker exec teamcity-agent-2 apt-get update -qq
-                docker exec teamcity-agent-2 apt-get install -qq -y awscli
-
-          commands:
-            command-1:
-              command: "./bootstrap-agents.sh"
               cwd: "/working-directory"
 
     Properties:
