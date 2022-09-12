@@ -23,4 +23,5 @@ then
     IMAGE_TAG=$(date +%Y.%m.%d.%H.%M);
 fi
 
-docker build --tag "$REPO_NAME/$IMAGE_NAME:$IMAGE_TAG" "$SCRIPT_DIR/../$IMAGE_NAME";
+$SCRIPT_DIR/docker-build.sh $REPO_NAME $IMAGE_NAME $IMAGE_TAG;
+$SCRIPT_DIR/docker-push.sh $REPO_NAME $IMAGE_NAME $IMAGE_TAG;
