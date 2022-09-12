@@ -21,6 +21,6 @@ DNSHostedZoneId="Z096596714ARTMU5ISO7G" \
 DNSRecordName="teamcity.storagequeensoftware.com" \
 DNSRecordTTL="300" \
 AllowAccessCidrIp="24.240.92.10/24" \
-PostgresDockerImage="wesedge/sq-postgres:5" \
+PostgresDockerImage="wesedge/sq-postgres:2022.09.12.02.16" \
 TeamCityServerDockerImage="jetbrains/teamcity-server:2022.04.3" \
 TeamCityAgentDockerImage="jetbrains/teamcity-agent:2022.04.3-linux-sudo";
