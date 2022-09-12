@@ -4,7 +4,7 @@ REGION="us-east-1";
 ENV="dev";
 STACK_NAME="sq-$ENV-networking";
 SCRIPT_DIR=$(dirname "$0");
-TEMPLATE_FILE=$SCRIPT_DIR/../template.yaml;
+TEMPLATE_FILE=$SCRIPT_DIR/../../template.yaml;
 
 aws cloudformation deploy \
 --region $REGION \
