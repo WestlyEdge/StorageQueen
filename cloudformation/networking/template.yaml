@@ -18,14 +18,6 @@ Parameters:
     Type: String
     Description: The IPv4 CIDR block assigned to public subnet 2
 
-  PrivateSubnet1CidrBlock:
-    Type: String
-    Description: The IPv4 CIDR block assigned to private subnet 1
-
-  PrivateSubnet2CidrBlock:
-    Type: String
-    Description: The IPv4 CIDR block assigned to private subnet 2
-
   Subnet1AZ:
     Type: String
     Description: The Availability Zone of subnet 1
@@ -80,25 +72,6 @@ Resources:
         - Key: Name
           Value: !Sub "sq-${Env}-public-subnet-1"
 
-  myNatGateway1:
-    Type: AWS::EC2::NatGateway
-    Properties:
-      AllocationId:
-        Fn::GetAtt:
-          - myNatEIP1
-          - AllocationId
-      SubnetId:
-        Ref: myPublicSubnet1
-      Tags:
-        - Key: Name
-          Value: !Sub "sq-${Env}-nat-gateway-1"
-
-  myNatEIP1:
-    DependsOn: myVPCGatewayAttachment
-    Type: AWS::EC2::EIP
-    Properties:
-      Domain: vpc
-
   myPublicRouteTableAssociation1:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
@@ -117,25 +90,6 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub "sq-${Env}-public-subnet-2"
-
-  myNatGateway2:
-    Type: AWS::EC2::NatGateway
-    Properties:
-      AllocationId:
-        Fn::GetAtt:
-          - myNatEIP2
-          - AllocationId
-      SubnetId:
-        Ref: myPublicSubnet2
-      Tags:
-        - Key: Name
-          Value: !Sub "sq-${Env}-nat-gateway-2"
-
-  myNatEIP2:
-    DependsOn: myVPCGatewayAttachment
-    Type: AWS::EC2::EIP
-    Properties:
-      Domain: vpc
 
   myPublicRouteTableAssociation2:
     Type: AWS::EC2::SubnetRouteTableAssociation
@@ -161,80 +115,6 @@ Resources:
       DestinationCidrBlock: 0.0.0.0/0
       GatewayId: !Ref myInternetGateway
 
-  # Private Subnet 1
-
-  myPrivateSubnet1:
-    Type: AWS::EC2::Subnet
-    Properties:
-      VpcId:
-        Ref: myVPC
-      CidrBlock: !Ref PrivateSubnet1CidrBlock
-      AvailabilityZone: !Ref Subnet1AZ
-      Tags:
-        - Key: Name
-          Value: !Sub "sq-${Env}-private-subnet-1"
-
-  # Private Subnet 1 Routes
-
-  myPrivateSubnetRouteTable1:
-    Type: AWS::EC2::RouteTable
-    Properties:
-      VpcId: !Ref myVPC
-      Tags:
-        - Key: Name
-          Value: !Sub "sq-${Env}-private-route-table-1"
-
-  myPrivateRoute1:
-    Type: AWS::EC2::Route
-    DependsOn: myNatGateway1
-    Properties:
-      RouteTableId: !Ref myPrivateSubnetRouteTable1
-      DestinationCidrBlock: 0.0.0.0/0
-      NatGatewayId: !Ref myNatGateway1
-
-  myPrivateRouteTableAssociation1:
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties:
-      RouteTableId: !Ref myPrivateSubnetRouteTable1
-      SubnetId: !Ref myPrivateSubnet1
-
-  # Private Subnet 2
-
-  myPrivateSubnet2:
-    Type: AWS::EC2::Subnet
-    Properties:
-      VpcId:
-        Ref: myVPC
-      CidrBlock: !Ref PrivateSubnet2CidrBlock
-      AvailabilityZone: !Ref Subnet2AZ
-      Tags:
-        - Key: Name
-          Value: !Sub "sq-${Env}-private-subnet-2"
-
-  # Private Subnet 2 Routes
-
-  myPrivateSubnetRouteTable2:
-    Type: AWS::EC2::RouteTable
-    Properties:
-      VpcId: !Ref myVPC
-      Tags:
-        - Key: Name
-          Value: !Sub "sq-${Env}-private-route-table-2"
-
-  myPrivateRoute2:
-    Type: AWS::EC2::Route
-    DependsOn: myNatGateway2
-    Properties:
-      RouteTableId: !Ref myPrivateSubnetRouteTable2
-      DestinationCidrBlock: 0.0.0.0/0
-      NatGatewayId: !Ref myNatGateway2
-
-  myPrivateRouteTableAssociation2:
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties:
-      RouteTableId: !Ref myPrivateSubnetRouteTable2
-      SubnetId: !Ref myPrivateSubnet2
-
 # Outputs
 
 Outputs:
@@ -256,15 +136,3 @@ Outputs:
     Value: !Ref myPublicSubnet2
     Export:
       Name: !Sub "${AWS::StackName}-public-subnet-2-id"
-
-  PrivateSubnet1:
-    Description: Private Subnet 1
-    Value: !Ref myPrivateSubnet1
-    Export:
-      Name: !Sub "${AWS::StackName}-private-subnet-1-id"
-
-  PrivateSubnet2:
-    Description: Private Subnet 2
-    Value: !Ref myPrivateSubnet2
-    Export:
-      Name: !Sub "${AWS::StackName}-private-subnet-2-id"
