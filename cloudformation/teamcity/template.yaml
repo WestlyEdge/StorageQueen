@@ -275,7 +275,7 @@ Resources:
           Value: "sq-teamcity-ec2"
 
   myInstanceProfile:
-    Type: "AWS::IAM::InstanceProfile"
+    Type: AWS::IAM::InstanceProfile
     DependsOn: myRole
     Properties:
       Roles:
@@ -298,8 +298,9 @@ Resources:
             Statement:
               - Effect: Allow
                 Action:
-                  - "eks:CreateCluster"
-                  - "eks:DescribeCluster"
+                  - eks:CreateCluster
+                  - eks:DeleteCluster
+                  - eks:DescribeCluster
                 Resource: "*"
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
