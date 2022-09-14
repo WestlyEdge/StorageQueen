@@ -1,0 +1,66 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Description:
+
+  This template provisions an EKS Cluster control plane.
+
+Parameters:
+
+  Env:
+    Type: String
+    Description: dev or prod
+
+  NetworkingStackName:
+    Type: String
+    Description: the parent networking stack where this eks cluster will live
+
+  KubernetesVersion:
+    Type: String
+    Description: K8s Version
+
+Resources:
+
+  # EKS
+
+  myEKSCluster:
+    Type: AWS::EKS::Cluster
+    Properties:
+      Name: !Sub "sq-${Env}-eks-cluster"
+      Version: !Ref KubernetesVersion
+      RoleArn: !GetAtt myEKSRole.Arn
+      ResourcesVpcConfig:
+        SecurityGroupIds:
+          - !Ref myEKSSecurityGroup
+        SubnetIds:
+          - Fn::ImportValue:
+              !Sub "sq-${Env}-networking-public-subnet-1-id"
+          - Fn::ImportValue:
+              !Sub "sq-${Env}-networking-public-subnet-2-id"
+
+  myEKSRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "sq-${Env}-eks-cluster-role"
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service:
+                - "eks.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      Path: "/"
+
+  myEKSSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Cluster communication with worker nodes
+      VpcId:
+        Fn::ImportValue:
+          !Sub "${NetworkingStackName}-vpc-id"
+      Tags:
+        - Key: Name
+          Value: !Sub "sq-${Env}-eks-cluster-sg"
