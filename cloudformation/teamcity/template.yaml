@@ -290,6 +290,17 @@ Resources:
         - "arn:aws:iam::aws:policy/AmazonRoute53FullAccess"
         - "arn:aws:iam::aws:policy/AWSCloudFormationFullAccess"
         - "arn:aws:iam::aws:policy/AmazonEC2FullAccess"
+        - "arn:aws:iam::aws:policy/IAMFullAccess"
+      Policies:
+        - PolicyName: "sq-teamcity-iam-policy"
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "eks:CreateCluster"
+                  - "eks:DescribeCluster"
+                Resource: "*"
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
