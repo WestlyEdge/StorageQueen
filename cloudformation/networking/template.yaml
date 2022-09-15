@@ -67,10 +67,15 @@ Resources:
       VpcId:
         Ref: myVPC
       CidrBlock: !Ref PublicSubnet1CidrBlock
+      MapPublicIpOnLaunch: true
       AvailabilityZone: !Ref Subnet1AZ
       Tags:
         - Key: Name
           Value: !Sub "sq-${Env}-public-subnet-1"
+        - Key: !Sub "kubernetes.io/cluster/sq-${Env}-eks-cluster"
+          Value: "shared"
+        - Key: "kubernetes.io/role/elb"
+          Value: 1
 
   myPublicRouteTableAssociation1:
     Type: AWS::EC2::SubnetRouteTableAssociation
@@ -86,10 +91,15 @@ Resources:
       VpcId:
         Ref: myVPC
       CidrBlock: !Ref PublicSubnet2CidrBlock
+      MapPublicIpOnLaunch: true
       AvailabilityZone: !Ref Subnet2AZ
       Tags:
         - Key: Name
           Value: !Sub "sq-${Env}-public-subnet-2"
+        - Key: !Sub "kubernetes.io/cluster/sq-${Env}-eks-cluster"
+          Value: "shared"
+        - Key: "kubernetes.io/role/elb"
+          Value: 1
 
   myPublicRouteTableAssociation2:
     Type: AWS::EC2::SubnetRouteTableAssociation

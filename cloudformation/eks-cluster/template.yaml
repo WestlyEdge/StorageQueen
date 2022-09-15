@@ -18,6 +18,10 @@ Parameters:
     Type: String
     Description: K8s Version
 
+  EKSClusterName:
+    Type: String
+    Description: the name of the new aws eks cluster
+
 Resources:
 
   # EKS
@@ -25,12 +29,12 @@ Resources:
   myEKSCluster:
     Type: AWS::EKS::Cluster
     Properties:
-      Name: !Sub "sq-${Env}-eks-cluster"
+      Name: !Ref EKSClusterName
       Version: !Ref KubernetesVersion
       RoleArn: !GetAtt myEKSRole.Arn
       ResourcesVpcConfig:
         SecurityGroupIds:
-          - !Ref myEKSSecurityGroup
+          - !Ref myEKSClusterSecurityGroup
         SubnetIds:
           - Fn::ImportValue:
               !Sub "sq-${Env}-networking-public-subnet-1-id"
@@ -54,7 +58,7 @@ Resources:
               - "sts:AssumeRole"
       Path: "/"
 
-  myEKSSecurityGroup:
+  myEKSClusterSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: Cluster communication with worker nodes
@@ -64,3 +68,29 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub "sq-${Env}-eks-cluster-sg"
+        - Key: !Sub "kubernetes.io/cluster/${EKSClusterName}"
+          Value: "owned"
+
+Outputs:
+
+  EKSClusterName:
+    Description: the name of the eks cluster
+    Value: !Ref myEKSCluster
+    Export:
+      Name: !Sub "sq-${Env}-eks-cluster-name"
+
+  EKSClusterSecurityGroup:
+    Description: EKS control plane security group
+    Value: !Ref myEKSClusterSecurityGroup
+    Export:
+      Name: !Sub "sq-${Env}-eks-cluster-security-group"
+
+  EKSClusterVPCId:
+    Description: EKS control plane vpc id
+    Value:
+      Fn::ImportValue:
+        !Sub "${NetworkingStackName}-vpc-id"
+    Export:
+      Name: !Sub "sq-${Env}-eks-cluster-vpc-id"
+
+

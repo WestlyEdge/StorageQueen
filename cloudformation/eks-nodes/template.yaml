@@ -1,0 +1,294 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Description:
+
+  This template provisions EKS worker nodes into an existing EKS Cluster control plane.
+
+Parameters:
+
+  Env:
+    Type: String
+    Description: Sandbox, Dev, or Prod
+
+  EKSClusterName:
+    Type: String
+    Description: The name of the EKS Cluster control plane
+
+  InstanceType:
+    Type: String
+    Description: EC2 Instance Type... t2.micro, m1.small, m1.large, etc...
+
+  ImageId:
+    Type: String
+    Description: The id of the EKS optimized AMI to use
+
+  KeyPairName:
+    Type: String
+    Description: use this keypair to ssh into the EC2s
+
+  NodeGroupDesiredCapacity:
+    Type: String
+    Description: The number of Amazon EC2 instances that the Auto Scaling group attempts to maintain
+
+  NodeGroupMinSize:
+    Type: String
+    Description: The minimum number of Amazon EC2 instances in the Auto Scaling group
+
+  NodeGroupMaxSize:
+    Type: String
+    Description: The maximum number of Amazon EC2 instances in the Auto Scaling group
+
+  EKSBootstrapArguments:
+    Type: String
+    Description: Additional args to pass into bootstrap.sh (referenced in the UserData call to bootstrap.sh)
+
+  AllowSSHAccessCidrIp:
+    Type: String
+    Description: the security group for the ec2 will only allow incoming ssh connections from this cidr
+
+Resources:
+
+  # EC2s
+
+  myEKSNodeGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      DesiredCapacity: !Ref NodeGroupDesiredCapacity
+      MinSize: !Ref NodeGroupMinSize
+      MaxSize: !Ref NodeGroupMaxSize
+      LaunchTemplate:
+        LaunchTemplateName: !Sub "${AWS::StackName}"
+        Version: !GetAtt myNodeGroupLaunchTemplate.LatestVersionNumber
+      VPCZoneIdentifier:
+        - Fn::ImportValue:
+            !Sub "sq-${Env}-networking-public-subnet-1-id"
+        - Fn::ImportValue:
+            !Sub "sq-${Env}-networking-public-subnet-2-id"
+      Tags:
+        - Key: Name
+          PropagateAtLaunch: true
+          Value: !Sub "${Env}-eks-nodegroup-instance"
+        - Key: !Sub "kubernetes.io/cluster/${EKSClusterName}"
+          PropagateAtLaunch: true
+          Value: "owned"
+    UpdatePolicy:
+      AutoScalingRollingUpdate:
+        MaxBatchSize: 1
+        MinInstancesInService: 1
+        WaitOnResourceSignals: true
+        PauseTime: "PT5M"
+    CreationPolicy:
+      ResourceSignal:
+        Count: 1
+        Timeout: "PT5M"
+
+  myNodeGroupLaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateName: !Sub "${AWS::StackName}"
+      LaunchTemplateData:
+        InstanceType: !Ref InstanceType
+        ImageId: !Ref ImageId
+        KeyName: !Ref KeyPairName
+        IamInstanceProfile:
+          Arn: !GetAtt myNodeInstanceProfile.Arn
+        SecurityGroupIds:
+          - !Ref myNodeGroupSecurityGroup
+        UserData:
+          'Fn::Base64':
+            !Sub |
+            #!/bin/bash -xe
+
+            # attach this eks worker node to the eks control plane cluster
+            /etc/eks/bootstrap.sh ${EKSClusterName} ${EKSBootstrapArguments}
+
+            # signal cloudformation that the userdata is complete
+            /opt/aws/bin/cfn-signal --exit-code $? \
+                --stack ${AWS::StackName} \
+                --resource myEKSNodeGroup \
+                --region ${AWS::Region}
+
+  # Security Groups (worker nodes)
+
+  myNodeGroupSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "allowing communication into the eks worker node EC2s"
+      VpcId:
+        Fn::ImportValue:
+          !Sub "sq-${Env}-eks-cluster-vpc-id"
+      SecurityGroupIngress:
+        - Description: "allow worker nodes to receive communication from control plane"
+          IpProtocol: "tcp"
+          FromPort: 0
+          ToPort: 65535
+          SourceSecurityGroupId:
+            Fn::ImportValue:
+              !Sub "sq-${Env}-eks-cluster-security-group"
+        - Description: "allow incoming ssh connections"
+          IpProtocol: "tcp"
+          FromPort: 22
+          ToPort: 22
+          CidrIp: !Ref AllowSSHAccessCidrIp # allow ssh connections from this cidr
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-sg"
+        - Key: !Sub "kubernetes.io/cluster/${EKSClusterName}"
+          Value: "owned"
+
+  myInterNodeGroupIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      Description: "allow worker nodes to communicate with each other (all ports)"
+      GroupId: !Ref myNodeGroupSecurityGroup
+      IpProtocol: "-1"
+      FromPort: 0
+      ToPort: 65535
+      SourceSecurityGroupId: !Ref myNodeGroupSecurityGroup
+
+  # Configure Existing Control Plane Security Group
+
+  myControlPlaneEgress:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      Description: "allow control plane to send communications to worker nodes"
+      GroupId:
+        Fn::ImportValue:
+          !Sub "sq-${Env}-eks-cluster-security-group"
+      DestinationSecurityGroupId: !Ref myNodeGroupSecurityGroup
+      FromPort: 0
+      ToPort: 65535
+      IpProtocol: "tcp"
+
+  myControlPlaneIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      Description: "allow control plane to receive communication from worker nodes"
+      GroupId:
+        Fn::ImportValue:
+          !Sub "sq-${Env}-eks-cluster-security-group"
+      SourceSecurityGroupId: !Ref myNodeGroupSecurityGroup
+      FromPort: 0
+      ToPort: 65535
+      IpProtocol: "tcp"
+
+  # IAM
+
+  myNodeInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: /
+      Roles:
+        - !Ref myNodeInstanceRole
+
+  myNodeInstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Path: /
+      RoleName: !Sub "${Env}-eks-worker-node-instance-role"
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action:
+              - "sts:AssumeRole"
+            Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+        Version: 2012-10-17
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
+        - "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
+        - "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+        - "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+        - "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
+      Policies:
+        - PolicyName: !Sub "${Env}-eks-worker-node-instance-policy"
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - iam:CreateServiceLinkedRole
+                  - iam:GetServerCertificate
+                  - iam:ListServerCertificates
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - waf-regional:GetWebACLForResource
+                  - waf-regional:GetWebACL
+                  - waf-regional:AssociateWebACL
+                  - waf-regional:DisassociateWebACL
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - tag:GetResources
+                  - tag:TagResources
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - waf:GetWebACL
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - elasticloadbalancing:AddListenerCertificates
+                  - elasticloadbalancing:AddTags
+                  - elasticloadbalancing:CreateListener
+                  - elasticloadbalancing:CreateLoadBalancer
+                  - elasticloadbalancing:CreateRule
+                  - elasticloadbalancing:CreateTargetGroup
+                  - elasticloadbalancing:DeleteListener
+                  - elasticloadbalancing:DeleteLoadBalancer
+                  - elasticloadbalancing:DeleteRule
+                  - elasticloadbalancing:DeleteTargetGroup
+                  - elasticloadbalancing:DeregisterTargets
+                  - elasticloadbalancing:DescribeListenerCertificates
+                  - elasticloadbalancing:DescribeListeners
+                  - elasticloadbalancing:DescribeLoadBalancers
+                  - elasticloadbalancing:DescribeLoadBalancerAttributes
+                  - elasticloadbalancing:DescribeRules
+                  - elasticloadbalancing:DescribeSSLPolicies
+                  - elasticloadbalancing:DescribeTags
+                  - elasticloadbalancing:DescribeTargetGroups
+                  - elasticloadbalancing:DescribeTargetGroupAttributes
+                  - elasticloadbalancing:DescribeTargetHealth
+                  - elasticloadbalancing:ModifyListener
+                  - elasticloadbalancing:ModifyLoadBalancerAttributes
+                  - elasticloadbalancing:ModifyRule
+                  - elasticloadbalancing:ModifyTargetGroup
+                  - elasticloadbalancing:ModifyTargetGroupAttributes
+                  - elasticloadbalancing:RegisterTargets
+                  - elasticloadbalancing:RemoveListenerCertificates
+                  - elasticloadbalancing:RemoveTags
+                  - elasticloadbalancing:SetIpAddressType
+                  - elasticloadbalancing:SetSecurityGroups
+                  - elasticloadbalancing:SetSubnets
+                  - elasticloadbalancing:SetWebACL
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - acm:DescribeCertificate
+                  - acm:ListCertificates
+                  - acm:GetCertificate
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - ec2:AuthorizeSecurityGroupIngress
+                  - ec2:CreateSecurityGroup
+                  - ec2:CreateTags
+                  - ec2:DeleteTags
+                  - ec2:DeleteSecurityGroup
+                  - ec2:DescribeAccountAttributes
+                  - ec2:DescribeAddresses
+                  - ec2:DescribeInstances
+                  - ec2:DescribeInstanceStatus
+                  - ec2:DescribeInternetGateways
+                  - ec2:DescribeNetworkInterfaces
+                  - ec2:DescribeSecurityGroups
+                  - ec2:DescribeSubnets
+                  - ec2:DescribeTags
+                  - ec2:DescripeVolumes
+                  - ec2:DescribeVpcs
+                  - ec2:ModifyInstanceAttribute
+                  - ec2:ModifyNetworkInterfaceAttribute
+                  - ec2:RevokeSecurityGroupIngress
+                Resource: "*"

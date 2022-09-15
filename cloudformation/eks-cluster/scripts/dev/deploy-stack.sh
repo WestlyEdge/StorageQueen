@@ -15,4 +15,5 @@ aws cloudformation deploy \
 --parameter-overrides \
 Env=$ENV \
 NetworkingStackName="sq-$ENV-networking" \
-KubernetesVersion="1.23";
+KubernetesVersion="1.23" \
+EKSClusterName="sq-$ENV-eks-cluster";
