@@ -67,7 +67,7 @@ Resources:
       Tags:
         - Key: Name
           PropagateAtLaunch: true
-          Value: !Sub "${Env}-eks-nodegroup-instance"
+          Value: !Sub "sq-${Env}-eks-worker-ec2"
         - Key: !Sub "kubernetes.io/cluster/${EKSClusterName}"
           PropagateAtLaunch: true
           Value: "owned"

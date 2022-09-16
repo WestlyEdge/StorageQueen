@@ -354,3 +354,11 @@ Outputs:
         - PublicIp
       Export:
         Name:  !Sub "${AWS::StackName}-public-ip"
+
+    RoleName:
+      Description:
+        The Name of the EC2 Instance Profile IAM Role
+      Value:
+        !Ref RoleName
+      Export:
+        Name: "sq-teamcity-role-name"
