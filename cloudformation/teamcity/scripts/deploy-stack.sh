@@ -23,4 +23,4 @@ DNSRecordTTL="300" \
 AllowAccessCidrIp="24.240.92.10/24" \
 PostgresDockerImage="wesedge/sq-postgres:2022.09.12.03.18" \
 TeamCityServerDockerImage="wesedge/sq-teamcity-server:2022.09.12.03.13" \
-TeamCityAgentDockerImage="wesedge/sq-teamcity-agent:2022.09.12.05.32";
+TeamCityAgentDockerImage="wesedge/sq-teamcity-agent:2022.09.16.21.22";
