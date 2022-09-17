@@ -60,24 +60,46 @@ Parameters:
     Type: String
     Description: path to pull down the teamcity agent docker image
 
+  AutoScalingGroupMinSize:
+    Type: String
+    Description: minimum EC2 count
+
+  AutoScalingGroupMaxSize:
+    Type: String
+    Description: maximum EC2 count
+
+  AutoScalingGroupDesiredCapacity:
+    Type: String
+    Description: sets the ec2 count to maintain
+
   RoleName:
     Type: String
     Default: "sq-teamcity-ec2-role"
-    Description: uniqe name for the iam role
-
-  SecurityGroupName:
-    Type: String
-    Default: "sq-teamcity-ec2-security-group"
-    Description: uniqe name for the ec2 security group
+    Description: unique name for the iam role
 
 Resources:
 
   # EC2 Instance Configuration
   # Note : The cfn-init helper script processes these configuration sections in the following order: packages, groups, users, sources, files, commands, and then services. If you require a different order, separate your sections into different config keys, and then use a configset that specifies the order in which the config keys should be processed.
 
-  myEC2Instance:
-    Type: AWS::EC2::Instance
-    DependsOn: myEC2SecurityGroup
+  myAutoScalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      MinSize: !Ref AutoScalingGroupMinSize
+      MaxSize: !Ref AutoScalingGroupMaxSize
+      DesiredCapacity: !Ref AutoScalingGroupDesiredCapacity
+      LaunchTemplate:
+        LaunchTemplateName: !Sub "${AWS::StackName}"
+        Version: !GetAtt myLaunchTemplate.LatestVersionNumber
+      AvailabilityZones:
+        Fn::GetAZs: !Ref AWS::Region
+      Tags:
+        - Key: Name
+          PropagateAtLaunch: true
+          Value: "sq-teamcity-ec2"
+
+  myLaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
     Metadata:
       AWS::CloudFormation::Init:
 
@@ -247,32 +269,32 @@ Resources:
               cwd: "/working-directory"
 
     Properties:
-      InstanceType: !Ref InstanceType
-      ImageId: !Ref ImageId
-      KeyName: !Ref KeyPairName
-      IamInstanceProfile: !Ref myInstanceProfile
-      SecurityGroups:
-        - !Ref SecurityGroupName
-      BlockDeviceMappings:
-        - DeviceName: "/dev/xvda"
-          Ebs:
-            VolumeType: "gp2"
-            VolumeSize: 20
-            DeleteOnTermination: true
-            Encrypted: false
-      UserData:
-        'Fn::Base64':
-          !Sub |
-          #!bin/bash -xe
-
-          /opt/aws/bin/cfn-init -v \
-            --region ${AWS::Region} \
-            --stack ${AWS::StackName} \
-            --resource myEC2Instance \
-            --configsets configs;
-      Tags:
-        - Key: Name
-          Value: "sq-teamcity-ec2"
+      LaunchTemplateName: !Sub "${AWS::StackName}"
+      LaunchTemplateData:
+        InstanceType: !Ref InstanceType
+        ImageId: !Ref ImageId
+        KeyName: !Ref KeyPairName
+        IamInstanceProfile:
+          Arn: !GetAtt myInstanceProfile.Arn
+        SecurityGroupIds:
+          - !GetAtt myEC2SecurityGroup.GroupId
+        BlockDeviceMappings:
+          - DeviceName: "/dev/xvda"
+            Ebs:
+              VolumeType: "gp2"
+              VolumeSize: 20
+              DeleteOnTermination: true
+              Encrypted: false
+        UserData:
+          'Fn::Base64':
+            !Sub |
+            #!bin/bash -xe
+  
+            /opt/aws/bin/cfn-init -v \
+              --region ${AWS::Region} \
+              --stack ${AWS::StackName} \
+              --resource myLaunchTemplate \
+              --configsets configs;
 
   myInstanceProfile:
     Type: AWS::IAM::InstanceProfile
@@ -317,7 +339,6 @@ Resources:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: "SG for TeamCity EC2 instances"
-      GroupName: !Ref SecurityGroupName
       SecurityGroupIngress:
         - Description: "allow incoming ssh connections"
           IpProtocol: "tcp"
@@ -331,29 +352,9 @@ Resources:
           CidrIp: !Ref AllowAccessCidrIp # allow ssh connections from this cidr
       Tags:
         - Key: Name
-          Value: !Ref SecurityGroupName
+          Value: "sq-teamcity-ec2-security-group"
 
 Outputs:
-
-    PublicDNS:
-      Description:
-        The EC2 Instance DNS Path
-      Value:
-        !GetAtt
-        - myEC2Instance
-        - PublicDnsName
-      Export:
-        Name:  !Sub "${AWS::StackName}-public-dns"
-
-    PublicIp:
-      Description:
-        The EC2 Instance Public IP Address
-      Value:
-        !GetAtt
-        - myEC2Instance
-        - PublicIp
-      Export:
-        Name:  !Sub "${AWS::StackName}-public-ip"
 
     RoleName:
       Description:
