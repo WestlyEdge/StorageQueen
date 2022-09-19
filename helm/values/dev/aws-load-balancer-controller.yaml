@@ -1,0 +1,2 @@
+replicaCount: 1
+clusterName: sq-dev-eks-cluster
