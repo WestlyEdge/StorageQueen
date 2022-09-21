@@ -17,6 +17,12 @@ helm upgrade "aws-load-balancer-controller" \
 --values "$VALUES_DIR/aws-load-balancer-controller.yaml" \
 --install;
 
+# install nginx ingress controller
+helm upgrade "ingress-nginx" \
+"https://github.com/kubernetes/ingress-nginx/releases/download/helm-chart-4.2.5/ingress-nginx-4.2.5.tgz" \
+--values "$VALUES_DIR/ingress-nginx.yaml" \
+--install;
+
 ## install prometheus
 #helm upgrade "prometheus" \
 #"https://github.com/prometheus-community/helm-charts/releases/download/prometheus-15.12.2/prometheus-15.12.2.tgz" \
