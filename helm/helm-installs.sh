@@ -17,11 +17,11 @@ helm upgrade "aws-load-balancer-controller" \
 --values "$VALUES_DIR/aws-load-balancer-controller.yaml" \
 --install;
 
-# install rometheus
-helm upgrade "prometheus" \
-"https://github.com/prometheus-community/helm-charts/releases/download/prometheus-15.12.2/prometheus-15.12.2.tgz" \
---values "$VALUES_DIR/prometheus.yaml" \
---install;
+## install prometheus
+#helm upgrade "prometheus" \
+#"https://github.com/prometheus-community/helm-charts/releases/download/prometheus-15.12.2/prometheus-15.12.2.tgz" \
+#--values "$VALUES_DIR/prometheus.yaml" \
+#--install;
 
 #kubectl annotate pods --all --overwrite --namespace "kube-system" prometheus.io/scrape="true";
 #kubectl annotate pods --all --overwrite --namespace "kube-system" prometheus.io/path="/metrics";
