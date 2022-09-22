@@ -10,13 +10,6 @@ then
     exit 1; # terminate and indicate error
 fi
 
-# install alb ingress controller
-helm upgrade "aws-load-balancer-controller" \
-"https://aws.github.io/eks-charts/aws-load-balancer-controller-1.4.4.tgz" \
---namespace "kube-system" \
---values "$VALUES_DIR/aws-load-balancer-controller.yaml" \
---install;
-
 # install nginx ingress controller
 helm upgrade "ingress-nginx" \
 "https://github.com/kubernetes/ingress-nginx/releases/download/helm-chart-4.2.5/ingress-nginx-4.2.5.tgz" \

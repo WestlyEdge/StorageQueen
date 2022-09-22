@@ -56,6 +56,8 @@ Resources:
       DesiredCapacity: !Ref NodeGroupDesiredCapacity
       MinSize: !Ref NodeGroupMinSize
       MaxSize: !Ref NodeGroupMaxSize
+      TargetGroupARNs:
+        - !Ref myTargetGroup
       LaunchTemplate:
         LaunchTemplateName: !Sub "${AWS::StackName}"
         Version: !GetAtt myNodeGroupLaunchTemplate.LatestVersionNumber
@@ -130,6 +132,11 @@ Resources:
           FromPort: 22
           ToPort: 22
           CidrIp: !Ref AllowSSHAccessCidrIp # allow ssh connections from this cidr
+        - Description: "allow worker nodes to receive port 80 from the alb"
+          IpProtocol: "tcp"
+          FromPort: 80
+          ToPort: 80
+          SourceSecurityGroupId: !Ref myALBSecurityGroup
       Tags:
         - Key: Name
           Value: !Sub "${AWS::StackName}-sg"
@@ -292,3 +299,75 @@ Resources:
                   - ec2:ModifyNetworkInterfaceAttribute
                   - ec2:RevokeSecurityGroupIngress
                 Resource: "*"
+
+  # ALB Configuration
+
+  myALB:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Type: "application"
+      Scheme: internet-facing
+      Name: !Sub "sq-${Env}-eks-cluster-alb"
+      Subnets:
+        - Fn::ImportValue:
+            !Sub "sq-${Env}-networking-public-subnet-1-id"
+        - Fn::ImportValue:
+            !Sub "sq-${Env}-networking-public-subnet-2-id"
+      SecurityGroups:
+        - !Ref myALBSecurityGroup
+      Tags:
+        - Key: Name
+          Value: !Sub "sq-${Env}-eks-cluster-alb"
+
+  myALBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: !Sub "alb security group for sq-${Env}-eks-cluster ec2 nodes"
+      GroupName: !Sub "sq-${Env}-eks-cluster-alb-security-group"
+      VpcId:
+        Fn::ImportValue:
+          !Sub "sq-${Env}-networking-vpc-id"
+      SecurityGroupIngress:
+        - IpProtocol: "tcp"
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub "sq-${Env}-eks-cluster-alb-security-group"
+
+  myALBListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    DependsOn:
+      - myALB
+      - myTargetGroup
+    Properties:
+      Port: 80
+      Protocol: "HTTP"
+      LoadBalancerArn: !Ref myALB
+      DefaultActions:
+        - Type: "forward"
+          TargetGroupArn: !Ref myTargetGroup
+
+  myTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Port: 80
+      Name: !Sub "sq-${Env}-eks-cluster-target-group"
+      Protocol: "HTTP"
+      VpcId:
+        Fn::ImportValue:
+          !Sub "sq-${Env}-networking-vpc-id"
+      Tags:
+        - Key: Name
+          Value: !Sub "sq-${Env}-eks-cluster-target-group"
+
+Outputs:
+
+  LoadBalancerDNS:
+    Description:
+      The Load Balancer DNS Path
+    Value:
+      !GetAtt
+      - myALB
+      - DNSName
