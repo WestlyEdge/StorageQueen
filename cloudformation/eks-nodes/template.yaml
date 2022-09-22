@@ -46,6 +46,14 @@ Parameters:
     Type: String
     Description: the security group for the ec2 will only allow incoming ssh connections from this cidr
 
+  DNSHostedZoneId:
+    Type: String
+    Description: the id of the existing aws public hosted zone in route53 where the dns record already exists
+
+  DNSRecordName:
+    Type: String
+    Description: the name of the dns record
+
 Resources:
 
   # EC2s
@@ -361,6 +369,16 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub "sq-${Env}-eks-cluster-target-group"
+
+  myDnsRecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref DNSHostedZoneId
+      Name: !Ref DNSRecordName
+      Type: A
+      AliasTarget:
+        DNSName: !GetAtt myALB.DNSName
+        HostedZoneId: !GetAtt myALB.CanonicalHostedZoneID
 
 Outputs:
 

@@ -22,4 +22,6 @@ NodeGroupDesiredCapacity="1" \
 NodeGroupMinSize="1" \
 NodeGroupMaxSize="1" \
 EKSBootstrapArguments="" \
-AllowSSHAccessCidrIp="24.240.92.10/24";
+AllowSSHAccessCidrIp="24.240.92.10/24" \
+DNSHostedZoneId="Z011097625Z3C8FFCPBT2" \
+DNSRecordName="eks.storagequeen.com";

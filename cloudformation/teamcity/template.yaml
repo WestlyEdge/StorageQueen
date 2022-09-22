@@ -38,11 +38,11 @@ Parameters:
 
   DNSRecordName:
     Type: String
-    Description: the name of the dns record that already exists in route53
+    Description: the name of the dns record
 
   DNSRecordTTL:
     Type: String
-    Description: the ttl of the dns record that already exists in route53
+    Description: the ttl of the dns record
 
   AllowAccessCidrIp:
     Type: String
