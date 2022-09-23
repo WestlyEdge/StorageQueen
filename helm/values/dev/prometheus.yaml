@@ -1,3 +1,17 @@
+
+
+
+
+
+
+#------------------------------------------------------------------
+# https://github.com/prometheus-community/helm-charts/releases/download/prometheus-15.12.2/prometheus-15.12.2.tgz
+#------------------------------------------------------------------
+# all default values for this helm chart are commented out below...
+# do not modify below
+# if you would like to update a value you should add it above
+#------------------------------------------------------------------
+
 #
 #  Search packages
 #    prometheus

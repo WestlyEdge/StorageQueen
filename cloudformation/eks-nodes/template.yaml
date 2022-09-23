@@ -54,6 +54,14 @@ Parameters:
     Type: String
     Description: the name of the dns record
 
+  ALBListenerHttpPort:
+    Type: Number
+    Description: the port that the ALB should listen for incoming http requests from public
+
+  NginxControllerHttpNodePort:
+    Type: Number
+    Description: the port (nodeport)that the nginx controller service is listening for incoming http requests from the ALB
+
 Resources:
 
   # EC2s
@@ -140,10 +148,10 @@ Resources:
           FromPort: 22
           ToPort: 22
           CidrIp: !Ref AllowSSHAccessCidrIp # allow ssh connections from this cidr
-        - Description: "allow worker nodes to receive port 80 from the alb"
+        - Description: "allow worker nodes to receive the http (nginx nodeport) requests from the alb"
           IpProtocol: "tcp"
-          FromPort: 80
-          ToPort: 80
+          FromPort: !Ref NginxControllerHttpNodePort
+          ToPort: !Ref NginxControllerHttpNodePort
           SourceSecurityGroupId: !Ref myALBSecurityGroup
       Tags:
         - Key: Name
@@ -337,8 +345,8 @@ Resources:
           !Sub "sq-${Env}-networking-vpc-id"
       SecurityGroupIngress:
         - IpProtocol: "tcp"
-          FromPort: 80
-          ToPort: 80
+          FromPort: !Ref ALBListenerHttpPort
+          ToPort: !Ref ALBListenerHttpPort
           CidrIp: 0.0.0.0/0
       Tags:
         - Key: Name
@@ -350,7 +358,7 @@ Resources:
       - myALB
       - myTargetGroup
     Properties:
-      Port: 80
+      Port: !Ref ALBListenerHttpPort
       Protocol: "HTTP"
       LoadBalancerArn: !Ref myALB
       DefaultActions:
@@ -360,7 +368,7 @@ Resources:
   myTargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
-      Port: 80
+      Port: !Ref NginxControllerHttpNodePort
       Name: !Sub "sq-${Env}-eks-cluster-target-group"
       Protocol: "HTTP"
       VpcId:

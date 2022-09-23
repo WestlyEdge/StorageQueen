@@ -1,3 +1,20 @@
+controller:
+  service:
+    type: NodePort
+    nodePorts:
+      http: 32080
+      https: 32443
+      tcp:
+        8080: 32808
+
+#------------------------------------------------------------------
+# https://github.com/kubernetes/ingress-nginx/releases/download/helm-chart-4.2.5/ingress-nginx-4.2.5.tgz
+#------------------------------------------------------------------
+# all default values for this helm chart are commented out below...
+# do not modify below
+# if you would like to update a value you should add it above
+#------------------------------------------------------------------
+
 ### nginx configuration
 ### Ref: https://github.com/kubernetes/ingress-nginx/blob/main/docs/user-guide/nginx-configuration/index.md
 ###
