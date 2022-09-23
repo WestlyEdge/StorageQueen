@@ -12,7 +12,7 @@ controller:
 #------------------------------------------------------------------
 # all default values for this helm chart are commented out below...
 # do not modify below
-# if you would like to update a value you should add it above
+# if you would like to update a value you should add it above to override the defaults
 #------------------------------------------------------------------
 
 ### nginx configuration
