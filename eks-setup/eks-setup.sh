@@ -14,9 +14,6 @@ fi
 # create your kubeconfig file (kubeconfig default location is ~/.kube/config)
 aws eks update-kubeconfig --region $AWS_REGION --name $EKS_CLUSTER_NAME;
 
-# verify authorization
-kubectl get svc;
-
 # map ec2 worker nodes to k8s rbac group to allow bootstrapping themselves into the eks cluster
 $SCRIPT_DIR/map-worker-nodes.sh "$EKS_CLUSTER_NAME" "arn:aws:iam::682922730738:role/$ENV-eks-worker-node-instance-role";
 
