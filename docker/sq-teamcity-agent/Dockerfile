@@ -5,15 +5,15 @@ USER root
 RUN apt-get update
 
 # install aws-cli
-RUN apt-get install -y awscli
+RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && \
+    unzip awscliv2.zip && \
+    ./aws/install && \
+    aws --version
 
 # install kubectl
-RUN apt-get install -y ca-certificates curl && \
-    apt-get install -y apt-transport-https && \
-    curl -fsSLo /usr/share/keyrings/kubernetes-archive-keyring.gpg https://packages.cloud.google.com/apt/doc/apt-key.gpg && \
-    echo "deb [signed-by=/usr/share/keyrings/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-xenial main" | tee /etc/apt/sources.list.d/kubernetes.list && \
-    apt-get update && \
-    apt-get install -y kubectl
+RUN curl -LO "https://dl.k8s.io/release/v1.22.5/bin/linux/amd64/kubectl" && \
+    mv ./kubectl /usr/local/bin/kubectl && \
+    chmod 755 /usr/local/bin/kubectl
 
 # install eks-ctl
 RUN curl --location "https://github.com/weaveworks/eksctl/releases/latest/download/eksctl_$(uname -s)_amd64.tar.gz" | tar xz -C /tmp && \
