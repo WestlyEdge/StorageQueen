@@ -3,12 +3,17 @@
 ENV=${1}; # environment name must be passed in as the first input arg (dev or prod)
 SCRIPT_DIR=$(dirname "$0");
 VALUES_DIR="$SCRIPT_DIR/values/$ENV/";
+EKS_CLUSTER_NAME="sq-$ENV-eks-cluster";
+AWS_REGION="us-east-1";
 
 if [ -z "$ENV" ]
 then
     echo "ERROR: environment name must be passed in as the first input arg (dev or prod)";
     exit 1; # terminate and indicate error
 fi
+
+# create your kubeconfig file (kubeconfig default location is ~/.kube/config)
+aws eks update-kubeconfig --region $AWS_REGION --name $EKS_CLUSTER_NAME;
 
 # install nginx ingress controller
 helm upgrade "ingress-nginx" \
