@@ -26,4 +26,5 @@ AllowSSHAccessCidrIp="24.240.92.10/24" \
 DNSHostedZoneId="Z011097625Z3C8FFCPBT2" \
 DNSRecordName="eks.$ENV.storagequeen.com" \
 ALBListenerHttpPort=80 \
-NginxControllerHttpNodePort=32080;
+NginxControllerHttpNodePort=32080 \
+NginxControllerHealthCheckPath="/healthz";

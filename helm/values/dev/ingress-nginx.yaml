@@ -1,4 +1,7 @@
 controller:
+  healthCheckPath: "/healthz"
+  ingressClassResource:
+    default: true
   service:
     type: NodePort
     nodePorts:

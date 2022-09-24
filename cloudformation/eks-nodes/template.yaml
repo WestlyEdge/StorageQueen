@@ -62,6 +62,10 @@ Parameters:
     Type: Number
     Description: the port (nodeport)that the nginx controller service is listening for incoming http requests from the ALB
 
+  NginxControllerHealthCheckPath:
+    Type: String
+    Description: the target group health check path needs to call our nginx ingress controller health check endpoint
+
 Resources:
 
   # EC2s
@@ -371,6 +375,7 @@ Resources:
       Port: !Ref NginxControllerHttpNodePort
       Name: !Sub "sq-${Env}-eks-cluster-target-group"
       Protocol: "HTTP"
+      HealthCheckPath: !Ref NginxControllerHealthCheckPath
       VpcId:
         Fn::ImportValue:
           !Sub "sq-${Env}-networking-vpc-id"
