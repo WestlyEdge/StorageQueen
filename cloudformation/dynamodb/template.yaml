@@ -1,0 +1,51 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Description:
+
+  This template provisions dynamodb for a single sq account.
+
+Parameters:
+
+  Env:
+    Type: String
+    Description: dev or prod
+
+  AccountId:
+    Type: String
+    Description: the unique account id of the sq account
+
+  BillingMode:
+    Type: String
+    Description: specify how billing works for read & write throughput (PROVISIONED or PAY_PER_REQUEST)
+
+  TableClass:
+    Type: String
+    Description: dynamodb offers two table classes designed to help you optimize for cost (STANDARD & STANDARD_INFREQUENT_ACCESS)
+
+Resources:
+
+  # each tenant account has a single dynamodb table where all of its data (json documents) are stored
+
+  myDynamoDBTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "sq-${Env}-${AccountId}"
+      BillingMode: !Ref BillingMode
+      TableClass: !Ref TableClass
+      AttributeDefinitions:
+        - AttributeName: "document-name"
+          AttributeType: "S"
+      KeySchema:
+        - AttributeName: "document-name"
+          KeyType: "HASH"
+      ContributorInsightsSpecification:
+        Enabled: false
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: false
+      SSESpecification:
+        SSEEnabled: false
+      Tags:
+        - Key: "AccountId"
+          Value: !Ref AccountId
+        - Key: "Env"
+          Value: !Ref Env

@@ -1,7 +1,9 @@
 #!/bin/bash
 
+# this script adds an account to the accounts.yaml file
+
 ENV=${1}; # environment name must be passed in as the first input arg (dev or prod)
-ACCOUNT_ID=${2}; # an account id must be passed in as the second input arg
+ACCOUNT_NAME=${2}; # an account name must be passed in as the second input arg
 SCRIPT_DIR=$(dirname "$0");
 ACCOUNT_YAML_PATH="$SCRIPT_DIR/../$ENV/accounts.yaml";
 
@@ -11,9 +13,9 @@ then
     exit 1; # terminate and indicate error
 fi
 
-if [ -z "$ACCOUNT_ID" ]
+if [ -z "$ACCOUNT_NAME" ]
 then
-    echo "ERROR: an account id must be passed in as the second input arg, example: \"sto-1664349483\"";
+    echo "ERROR: an account name must be passed in as the second input arg, example: \"A1 Storage LLC\"";
     exit 1; # terminate and indicate error
 fi
 
@@ -21,9 +23,16 @@ fi
 echo; echo "before..."; echo;
 yq $ACCOUNT_YAML_PATH;
 
-# delete the account from the yaml file if it exists
+# generate the new account id
+ACCOUNT_ID=$("$SCRIPT_DIR/generate-account-id.sh" $ACCOUNT_NAME);
+
+# add the new account to the yaml file
+ACCOUNT_NAME="$ACCOUNT_NAME" \
 ACCOUNT_ID="$ACCOUNT_ID" \
-yq --inplace 'del(.accounts[] | select(.id == env(ACCOUNT_ID)))' $ACCOUNT_YAML_PATH
+yq --inplace '.accounts += {
+"name":env(ACCOUNT_NAME),
+"id":env(ACCOUNT_ID)
+} | .. style="double"' $ACCOUNT_YAML_PATH
 
 # display the state of the accounts after we edit the file
 echo; echo "after..."; echo;
