@@ -21,14 +21,14 @@ fi
 
 # display the state of the accounts before we edit the file
 echo; echo "before..."; echo;
-yq $ACCOUNT_YAML_PATH;
+yq eval $ACCOUNT_YAML_PATH;
 
 # delete the account from the yaml file if it exists
 ACCOUNT_ID="$ACCOUNT_ID" \
-yq --inplace 'del(.accounts[] | select(.id == env(ACCOUNT_ID)))' $ACCOUNT_YAML_PATH
+yq eval --inplace 'del(.accounts[] | select(.id == env(ACCOUNT_ID)))' $ACCOUNT_YAML_PATH
 
 # display the state of the accounts after we edit the file
 echo; echo "after..."; echo;
-yq $ACCOUNT_YAML_PATH;
+yq eval $ACCOUNT_YAML_PATH;
 echo;
 

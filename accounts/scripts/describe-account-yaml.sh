@@ -13,4 +13,4 @@ then
 fi
 
 # display the state of the account yaml file
-yq $ACCOUNT_YAML_PATH;
+yq eval $ACCOUNT_YAML_PATH;

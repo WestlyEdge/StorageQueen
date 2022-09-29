@@ -17,10 +17,10 @@ fi
 
 # display the state of the accounts.yaml file
 echo; echo "the following accounts will be installed or updated..."; echo;
-yq $YAML_PATH;
+yq eval $YAML_PATH;
 
 # convert the yaml to json so we can use jq below
-JSON=$(yq -o=j "$YAML_PATH");
+JSON=$(yq eval -o=j "$YAML_PATH");
 
 # make newlines the only separator for the bash for loop below (otherwise spaces in string values will break the loop logic)
 IFS=$'\n'
