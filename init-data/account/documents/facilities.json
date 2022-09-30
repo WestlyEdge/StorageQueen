@@ -1,0 +1,32 @@
+{"L":
+  [
+    {"M":
+      {
+        "name":{"S": "Foo Bar Storage - Sarasota"},
+        "default":{"BOOL": true},
+        "address":{"M":
+          {
+            "street-address":{"S": "123 Foo St."},
+            "city":{"S": "Sarasota"},
+            "state":{"S": "Florida"},
+            "zip":{"S": "11111"}
+          }
+        }
+      }
+    },
+    {"M":
+    {
+      "name":{"S": "Foo Bar Storage - Houston"},
+      "default":{"BOOL": false},
+      "address":{"M":
+      {
+        "street-address":{"S": "456 Foo St."},
+        "city":{"S": "Houston"},
+        "state":{"S": "Texas"},
+        "zip":{"S": "22222"}
+      }
+      }
+    }
+    }
+  ]
+}

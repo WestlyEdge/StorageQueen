@@ -1,0 +1,15 @@
+{"M":
+  {
+    "first-name":{"S": "Bob"},
+    "last-name": {"S": "Barker"},
+    "email": {"S": "bob.barker@foobarstorage.com"},
+    "address": {"M":
+      {
+        "street-address": {"S": "789 Foo St."},
+        "city": {"S": "Milwaukee"},
+        "state": {"S": "Wisconsin"},
+        "zip": {"S": "44444"}
+      }
+    }
+  }
+}
