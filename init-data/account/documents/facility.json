@@ -1,0 +1,14 @@
+{
+  "document-type": {"S": "facility"},
+  "document-key": {"S": "111-111-111-111-111"},
+  "name":{"S": "Foo Bar Storage - Sarasota"},
+  "default":{"BOOL": true},
+  "address":{"M":
+    {
+      "street-address":{"S": "123 Foo St."},
+      "city":{"S": "Sarasota"},
+      "state":{"S": "Florida"},
+      "zip":{"S": "11111"}
+    }
+  }
+}

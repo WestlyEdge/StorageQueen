@@ -33,11 +33,15 @@ Resources:
       BillingMode: !Ref BillingMode
       TableClass: !Ref TableClass
       AttributeDefinitions:
-        - AttributeName: "document-name"
+        - AttributeName: "document-type"
+          AttributeType: "S"
+        - AttributeName: "document-key"
           AttributeType: "S"
       KeySchema:
-        - AttributeName: "document-name"
+        - AttributeName: "document-type"
           KeyType: "HASH"
+        - AttributeName: "document-key"
+          KeyType: "RANGE"
       ContributorInsightsSpecification:
         Enabled: false
       PointInTimeRecoverySpecification:

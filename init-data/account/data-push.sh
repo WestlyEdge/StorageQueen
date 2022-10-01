@@ -46,7 +46,7 @@ for file in $JSON_DOCUMENT_DIR/*; do
   aws dynamodb put-item \
   --region $REGION \
   --table-name $DYNAMODB_TABLE_NAME \
-  --item "{\"document-name\": {\"S\": \"$JSON_DOCUMENT_NAME\"},\"document\": $JSON_FILE_CONTENTS}";
+  --item "$JSON_FILE_CONTENTS";
 
   echo;
 
